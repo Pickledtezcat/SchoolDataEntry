@@ -1,4 +1,6 @@
 from tkinter import *
+from tkinter.ttk import *
+
 import file_utils
 
 from PIL import Image, ImageTk
@@ -8,7 +10,7 @@ class Words(object):
     def __init__(self, master, control):
         self.control = control
         self.frame = Frame(master)
-        self.frame.pack()
+        self.frame.grid(row=0, column=2)
         self.master = master
         self.title = "Word List"
         self.word_number = 1
@@ -79,7 +81,7 @@ class Words(object):
 
     def add_entry_fields(self):
         for i in range(len(self.word_list)):
-            label = "word {}".format(i)
+            label = "word {}".format(i + 1)
             word = self.word_list[i]
 
             my_label = Label(self.frame, width=15, text=label, anchor='w')
@@ -94,15 +96,43 @@ class Words(object):
             self.word_number += 1
 
 
+class SavesList(object):
+    def __init__(self, master, control):
+        self.control = control
+        self.frame = Frame(master)
+        self.frame.grid(row=2, column=0)
+        self.master = master
+        self.combo_box = None
+        self.add_saves()
+
+    def add_saves(self):
+        def load_save(event):
+            print(event.widget.current())
+
+        saves = self.control.saves
+        self.combo_box = Combobox(self.frame, width=25, values=saves)
+        self.combo_box.grid(row=2, column=0)
+        self.combo_box.bind("<<ComboboxSelected>>", load_save)
+
+
 class MainWindow(object):
     def __init__(self, master=None):
         self.frame = Frame(master)
-        self.frame.pack()
+        self.frame.grid(row=0, column=0)
         self.master = master
+        self.rows = 0
+        self.combo_box = None
+        self.saves = self.get_saves()
 
         self.master.title("Data Entry")
+        self.new_entry = None
         self.word_lists = None
+        self.saves_list = None
         self.init_window()
+
+    def get_saves(self):
+        saves = ["week{}".format(n) for n in range(50)]
+        return saves
 
     def get_path(self):
         path = "D:/projects//gitpages//numlocked//Pickledtezcat.github.io/"
@@ -113,13 +143,26 @@ class MainWindow(object):
             self.word_lists.frame.destroy()
         self.word_lists = Words(self.master, self)
 
-    def clear_button(self):
-        loading_button = Button(self.frame, text='CLEAR', width=25, command=self.reload_word_lists)
-        loading_button.grid(row=0, column=0)
+    def file_buttons(self):
+        clear_button = Button(self.frame, text='CLEAR', width=15, command=self.reload_word_lists)
+        clear_button.grid(row=0, column=0)
+
+        new_label = Label(self.frame, width=15, text="Add new entry:")
+        new_label.grid(row=1, column=0)
+
+        self.new_entry = Entry(self.frame, width=15)
+        self.new_entry.grid(row=1, column=1)
+
+        add_button = Button(self.frame, text='ADD', width=15, command=self.add_new_entry)
+        add_button.grid(row=2, column=0)
+
+    def add_new_entry(self):
+        print(self.new_entry.get())
 
     def init_window(self):
+        self.file_buttons()
+        self.saves_list = SavesList(self.master, self)
         self.word_lists = Words(self.master, self)
-        self.clear_button()
 
         my_menu = Menu(self.master)
         self.master.config(menu=my_menu)
@@ -136,6 +179,20 @@ class MainWindow(object):
 
         edit.add_command(label="Show Img", command=self.showImg)
         edit.add_command(label="Show Contents", command=self.show_contents)
+
+    def x(self, my_menu):
+
+        # example of dynamic menu
+        save_menu = Menu(my_menu)
+        my_menu.add_cascade(label="Saves", menu=save_menu)
+
+        def button_press(my_label):
+            print(my_label)
+
+        saves = ["week1", "week2", "week3", "week4", "week5", "week6", "week7"]
+
+        for save_name in saves:
+            save_menu.add_command(label=save_name, command=lambda in_label=save_name: button_press(in_label))
 
     def show_contents(self):
         contents = list(entry[1].get() for entry in self.word_lists.entries)
@@ -162,7 +219,13 @@ class MainWindow(object):
 
 
 root = Tk()
-root.geometry("600x400")
+root.geometry("800x400")
+
+s = Style()
+s.theme_use("alt")
+
+print(s.theme_names())
 
 app = MainWindow(root)
+
 root.mainloop()
