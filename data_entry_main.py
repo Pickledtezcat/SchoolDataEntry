@@ -7,6 +7,9 @@ from PIL import Image, ImageTk
 
 class MainWindow(object):
     def __init__(self, parent_frame):
+        self.image_list = None
+        self.get_picture_list()
+
         self.parent_frame = parent_frame
         self.parent_frame.bind("<Return>", self.submit)
 
@@ -57,19 +60,19 @@ class MainWindow(object):
         return target_language
 
     def get_saves(self):
-        content = file_utils.load_file()
+        content = file_utils.load_file("saved_data")
         saves = list(save_key for save_key in content)
 
         return sorted(saves)
 
     def get_save_data(self):
-        content = file_utils.load_file()
+        content = file_utils.load_file("saved_data")
 
         save_name = self.current_save_name
         if not content.get(save_name):
             save = self.new_collection()
             content[save_name] = save
-            file_utils.save_file(content)
+            file_utils.save_file(content, "saved_data")
         else:
             save = content[save_name]
 
@@ -79,9 +82,9 @@ class MainWindow(object):
         new_collection_name = self.main_controls.new_entry.get()
         if new_collection_name:
             save = self.new_collection()
-            content = file_utils.load_file()
+            content = file_utils.load_file("saved_data")
             content[new_collection_name] = save
-            file_utils.save_file(content)
+            file_utils.save_file(content, "saved_data")
 
             self.current_save_name = new_collection_name
             self.reset()
@@ -125,6 +128,21 @@ class MainWindow(object):
         img.image = render
         img.pack()
 
+    def update_pictures(self):
+        image_list = file_utils.process_images()
+        image_dict = {"images": image_list}
+        file_utils.save_file(image_dict, "image_names")
+
+        self.get_picture_list()
+        self.reset()
+
+    def get_picture_list(self):
+        pictures = file_utils.load_file("image_names")
+        if pictures:
+            self.image_list = pictures["images"]
+        else:
+            self.image_list = []
+
     def show_text(self, text_content):
         text = Label(self.console, text=text_content)
         text.pack()
@@ -143,14 +161,14 @@ class MainWindow(object):
         self.current_save_data["sentences"] = sentences
         targets = [entry.get() for entry in self.words_list.target_boxes.entries if entry.get() != ""]
         self.current_save_data["target_language"] = targets
-        content = file_utils.load_file()
+        content = file_utils.load_file("saved_data")
         content[self.current_save_name] = self.current_save_data
-        file_utils.save_file(content)
+        file_utils.save_file(content, "saved_data")
 
         self.reset()
 
     def clear_saves(self):
-        file_utils.save_file({})
+        file_utils.save_file({}, "saved_data")
         self.reset()
 
 
@@ -171,11 +189,14 @@ class MainControls(object):
         self.new_entry = Entry(self.frame, width=15)
         self.new_entry.grid(row=1, column=1)
 
-        add_button = Button(self.frame, text='ADD', width=15, command=self.manager.add_collection)
+        add_button = Button(self.frame, text='ADD', width=25, command=self.manager.add_collection)
         add_button.grid(row=2, column=0)
 
-        clear_button = Button(self.frame, text='CLEAR ALL', width=15, command=self.manager.clear_saves)
+        clear_button = Button(self.frame, text='CLEAR ALL', width=25, command=self.manager.clear_saves)
         clear_button.grid(row=3, column=0)
+
+        pictures_button = Button(self.frame, text='UPDATE PICTURES', width=25, command=self.manager.update_pictures)
+        pictures_button.grid(row=4, column=0)
 
     def add_new_entry(self):
         print(self.new_entry.get())
@@ -254,6 +275,7 @@ class WordsBoxes(object):
         self.add_entry(index, "")
 
     def add_entry(self, index, word):
+
         word_label = "word {}".format(index + 1)
         my_label = Label(self.frame, width=12, text=word_label, anchor='e')
         my_entry = Entry(self.frame, width=20)
@@ -261,8 +283,11 @@ class WordsBoxes(object):
         my_label.grid(row=index, column=0)
         my_entry.grid(row=index, column=1)
 
-        my_entry.insert(10, word)
+        if word.lower() not in self.manager.image_list and word != "":
+            my_label = Label(self.frame, width=12, text="x", anchor='w')
+            my_label.grid(row=index, column=2)
 
+        my_entry.insert(10, word)
         self.entries.append(my_entry)
 
 
@@ -291,7 +316,7 @@ class SentenceBoxes(object):
     def add_entry(self, index, sentence):
         sentence_label = "Sentence {}".format(index + 1)
         my_label = Label(self.frame, width=15, text=sentence_label, anchor='e')
-        my_entry = Entry(self.frame, width=30)
+        my_entry = Entry(self.frame, width=35)
 
         my_label.grid(row=index, column=0)
         my_entry.grid(row=index, column=1)
@@ -311,7 +336,7 @@ class TargetBoxes(object):
         self.setup()
 
     def setup(self):
-        current_label = Label(self.frame, width=20, text="TARGET LANGUAGE:", justify='center')
+        current_label = Label(self.frame, width=20, text="TARGET LANGUAGE ($):", justify='center')
         current_label.grid(row=0, column=1)
 
         sentences = self.manager.get_target()
@@ -326,7 +351,7 @@ class TargetBoxes(object):
     def add_entry(self, index, sentence):
         sentence_label = "Target {}".format(index + 1)
         my_label = Label(self.frame, width=15, text=sentence_label, anchor='e')
-        my_entry = Entry(self.frame, width=30)
+        my_entry = Entry(self.frame, width=35)
 
         my_label.grid(row=index, column=0)
         my_entry.grid(row=index, column=1)
@@ -335,13 +360,13 @@ class TargetBoxes(object):
 
         self.entries.append(my_entry)
 
+
 root = Tk()
-root.geometry("1300x300")
+root.geometry("1300x600")
 
-s = Style()
-#s.theme_use("alt")
+style = Style()
+style.configure("Red.TEntry", background="red")
 
-print(s.theme_names())
 app = MainWindow(root)
 
 root.mainloop()
