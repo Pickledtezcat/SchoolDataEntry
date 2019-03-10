@@ -1,14 +1,14 @@
 import json
 
 def save_file(content):
-    out_path = "D:/projects//gitpages//numlocked//Pickledtezcat.github.io//saved_data.js"
+    out_path = "{}//saved_data.js".format(get_path())
 
     with open(out_path, "w") as outfile:
         converted_content = json.dumps(content, sort_keys=True)
         outfile.write("my_data ={}".format(converted_content))
 
 def load_file():
-    in_path = "D:/projects//gitpages//numlocked//Pickledtezcat.github.io//saved_data.js"
+    in_path = "{}//saved_data.js".format(get_path())
 
     with open(in_path, "r") as infile:
         loaded_content = infile.read()
@@ -18,3 +18,7 @@ def load_file():
             return content
         else:
             return None
+
+def get_path():
+    path = "D:/projects//gitpages//numlocked//Pickledtezcat.github.io"
+    return path
