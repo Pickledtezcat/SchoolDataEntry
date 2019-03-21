@@ -9,7 +9,7 @@ def save_file(content, file_name):
 
     with open(out_path, "w") as outfile:
         converted_content = json.dumps(content, sort_keys=True)
-        outfile.write("{} ={}".format(file_name, converted_content))
+        outfile.write("window.{} ={}".format(file_name, converted_content))
 
 
 def load_file(file_name):
@@ -37,15 +37,71 @@ def strip_name(file_name):
     part_list = []
 
     for word in split_name:
-        parts = "".join([i for i in word if not i.isdigit()])
+        parts = "".join([i for i in word if not i.isdigit() and i != "-"])
         if parts != "":
+            print(parts)
             part_list.append(parts)
 
     stripped_name = "_".join(part_list)
-    return stripped_name
+    second_split = stripped_name.split(" ")
+    valid_parts = [section for section in second_split if len(section) > 0]
+
+    final_spilt = " ".join(valid_parts)
+
+    return final_spilt
 
 
-def process_images():
+def get_image_list():
+    main_path = "{}pictures//".format(get_path())
+    origin_path = "{}origin_files//".format(main_path)
+
+    processing = []
+    save_list = []
+
+    for path, dirs, files in os.walk(origin_path):
+
+        for file_name in files:
+
+            stripped_name = strip_name(file_name)
+            count = 1
+            for used in save_list:
+                if used == stripped_name:
+                    count += 1
+
+            new_name = "{}_{}".format(stripped_name, count)
+            image_path = "{}{}".format(origin_path, file_name)
+
+            save_list.append(stripped_name)
+            processing.append([image_path, new_name])
+
+    return save_list, processing
+
+
+def process_image(image_path, new_name):
+    cell_size = 600
+    main_path = "{}pictures//".format(get_path())
+
+    with Image.open(image_path, "r") as im:
+        bbox = im.getbbox()
+
+        x_size = bbox[2]
+        y_size = bbox[3]
+
+        multi = 1.0 / float(cell_size)
+
+        scaler = float(y_size) * multi
+
+        y_target = cell_size
+        x_target = int(x_size / scaler)
+
+        im = im.convert("RGB")
+        im = im.resize((x_target, y_target), Image.ANTIALIAS)
+
+        save_name = "{}{}.jpeg".format(main_path, new_name)
+        im.save(save_name, "jpeg", quality=60, )
+
+
+def process_images_x():
     cell_size = 600
 
     main_path = "{}pictures//".format(get_path())
@@ -86,9 +142,9 @@ def process_images():
                 im = im.convert("RGB")
                 im = im.resize((x_target, y_target), Image.ANTIALIAS)
 
-                save_name = "{}{}.png".format(main_path, new_name)
+                save_name = "{}{}.jpeg".format(main_path, new_name)
                 print(save_name)
 
-                im.save(save_name, "PNG")
+                im.save(save_name, "jpeg", quality=60,)
 
     return processed

@@ -4,11 +4,17 @@ from tkinter.ttk import *
 import file_utils
 from PIL import Image, ImageTk
 
+from time import sleep
+
 
 class MainWindow(object):
     def __init__(self, parent_frame):
         self.image_list = None
         self.get_picture_list()
+        self.top_frame = Frame(parent_frame)
+        self.top_frame.grid(row=0, column=0, sticky='news', columnspan=5, rowspan=5)
+        parent_frame.grid_columnconfigure(1, weight=1)
+        parent_frame.grid_rowconfigure(1, weight=1)
 
         self.parent_frame = parent_frame
         self.parent_frame.bind("<Return>", self.submit)
@@ -16,11 +22,11 @@ class MainWindow(object):
         self.current_save_name = "week1"
         self.current_save_data = self.get_save_data()
 
-        self.main_controls = MainControls(self, self.parent_frame)
-        self.saves_list = SavesList(self, self.parent_frame)
-        self.words_list = WordsList(self, self.parent_frame)
+        self.main_controls = MainControls(self, self.top_frame)
+        self.saves_list = SavesList(self, self.top_frame)
+        self.words_list = WordsList(self, self.top_frame)
 
-        self.console = Frame(parent_frame)
+        self.console = Frame(self.top_frame)
         self.console.grid(row=0, column=3, columnspan=2)
         self.add_menus()
 
@@ -95,23 +101,23 @@ class MainWindow(object):
     def spawn_controls(self):
         if self.main_controls:
             self.main_controls.frame.destroy()
-        self.main_controls = MainControls(self, self.parent_frame)
+        self.main_controls = MainControls(self, self.top_frame)
 
     def spawn_saves_lists(self):
         if self.saves_list:
             self.saves_list.frame.destroy()
-        self.saves_list = SavesList(self, self.parent_frame)
+        self.saves_list = SavesList(self, self.top_frame)
 
     def spawn_word_lists(self):
         if self.words_list:
             self.words_list.frame.destroy()
-        self.words_list = WordsList(self, self.parent_frame)
+        self.words_list = WordsList(self, self.top_frame)
 
     def spawn_console(self):
         if self.console:
             self.console.destroy()
 
-        self.console = Frame(self.parent_frame)
+        self.console = Frame(self.top_frame)
         self.console.grid(row=0, column=3, columnspan=2)
 
     def client_exit(self):
@@ -129,8 +135,10 @@ class MainWindow(object):
         img.pack()
 
     def update_pictures(self):
-        image_list = file_utils.process_images()
-        image_dict = {"images": image_list}
+        save_list, processing = file_utils.get_image_list()
+        self.main_controls.process_pictures(processing)
+
+        image_dict = {"images": save_list}
         file_utils.save_file(image_dict, "image_names")
 
         self.get_picture_list()
@@ -179,6 +187,7 @@ class MainControls(object):
         self.frame = Frame(parent_frame)
         self.frame.grid(row=0, column=0)
         self.new_entry = None
+        self.picture_progress = None
 
         self.file_buttons()
 
@@ -197,6 +206,22 @@ class MainControls(object):
 
         pictures_button = Button(self.frame, text='UPDATE PICTURES', width=25, command=self.manager.update_pictures)
         pictures_button.grid(row=4, column=0)
+
+    def process_pictures(self, picture_progress):
+        number_of_pictures = len(picture_progress)
+        value = 1.0 / number_of_pictures
+
+        self.picture_progress = Progressbar(self.frame, mode="determinate", length=200, maximum=1.0)
+        self.picture_progress.grid(row=5, column=0)
+        self.picture_progress.start()
+
+        while len(picture_progress) > 0:
+            image_path, new_name = picture_progress.pop()
+            file_utils.process_image(image_path, new_name)
+            self.picture_progress.step(value)
+            self.picture_progress.update()
+
+        self.picture_progress.stop()
 
     def add_new_entry(self):
         print(self.new_entry.get())
@@ -257,7 +282,7 @@ class WordsBoxes(object):
         self.manager = manager
         self.parent_frame = parent_frame
         self.frame = Frame(parent_frame)
-        self.frame.grid(row=1, column=0)
+        self.frame.grid(row=0, column=1, rowspan=3)
         self.entries = []
         self.setup()
 
@@ -266,13 +291,14 @@ class WordsBoxes(object):
         current_label.grid(row=0, column=1)
 
         words = self.manager.get_words()
-        index = 1
+        index = 0
 
         for i in range(len(words)):
             self.add_entry(index, words[i])
             index += 1
 
         self.add_entry(index, "")
+        self.entries[-1].focus_set()
 
     def add_entry(self, index, word):
 
@@ -280,12 +306,11 @@ class WordsBoxes(object):
         my_label = Label(self.frame, width=12, text=word_label, anchor='e')
         my_entry = Entry(self.frame, width=20)
 
-        my_label.grid(row=index, column=0)
-        my_entry.grid(row=index, column=1)
+        my_label.grid(row=index + 1, column=0)
+        my_entry.grid(row=index + 1, column=1)
 
         if word.lower() not in self.manager.image_list and word != "":
-            my_label = Label(self.frame, width=12, text="x", anchor='w')
-            my_label.grid(row=index, column=2)
+            my_entry["style"] = "Missing.TLabel"
 
         my_entry.insert(10, word)
         self.entries.append(my_entry)
@@ -305,7 +330,7 @@ class SentenceBoxes(object):
         current_label.grid(row=0, column=1)
 
         sentences = self.manager.get_sentences()
-        index = 1
+        index = 0
 
         for i in range(len(sentences)):
             self.add_entry(index, sentences[i])
@@ -318,8 +343,8 @@ class SentenceBoxes(object):
         my_label = Label(self.frame, width=15, text=sentence_label, anchor='e')
         my_entry = Entry(self.frame, width=35)
 
-        my_label.grid(row=index, column=0)
-        my_entry.grid(row=index, column=1)
+        my_label.grid(row=index + 1, column=0)
+        my_entry.grid(row=index + 1, column=1)
 
         my_entry.insert(END, sentence)
 
@@ -340,7 +365,7 @@ class TargetBoxes(object):
         current_label.grid(row=0, column=1)
 
         sentences = self.manager.get_target()
-        index = 1
+        index = 0
 
         for i in range(len(sentences)):
             self.add_entry(index, sentences[i])
@@ -353,8 +378,8 @@ class TargetBoxes(object):
         my_label = Label(self.frame, width=15, text=sentence_label, anchor='e')
         my_entry = Entry(self.frame, width=35)
 
-        my_label.grid(row=index, column=0)
-        my_entry.grid(row=index, column=1)
+        my_label.grid(row=index + 1, column=0)
+        my_entry.grid(row=index + 1, column=1)
 
         my_entry.insert(END, sentence)
 
@@ -363,10 +388,17 @@ class TargetBoxes(object):
 
 root = Tk()
 root.geometry("1300x600")
+#style = Style()
+#print(style.theme_names())
+#style.theme_use("clam")
 
-style = Style()
-style.configure("Red.TEntry", background="red")
+new_style = Style()
+
+new_style.configure("TButton", padding=6, relief="flat")
+
+new_style.configure("Missing.TLabel", background="LightGrey")
 
 app = MainWindow(root)
 
 root.mainloop()
+
