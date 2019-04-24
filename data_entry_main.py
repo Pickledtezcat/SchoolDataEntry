@@ -396,9 +396,11 @@ new_style = Style()
 
 new_style.configure("TButton", padding=6, relief="flat")
 
-new_style.configure("Missing.TLabel", background="LightGrey")
+new_style.configure("Missing.TLabel", background="Red")
 
 app = MainWindow(root)
 
 root.mainloop()
+
+
 
